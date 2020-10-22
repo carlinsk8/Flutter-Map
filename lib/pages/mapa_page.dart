@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+
 import 'package:mapa_app/bloc/mapa/mapa_bloc.dart';
 import 'package:mapa_app/bloc/mi_ubicacion/mi_ubicacion_bloc.dart';
+
 import 'package:mapa_app/widgets/widgets.dart';
 
 class MapaPage extends StatefulWidget {
@@ -26,8 +28,17 @@ class _MapaPageState extends State<MapaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: BlocBuilder<MiUbicacionBloc, MiUbicacionState>(
-        builder: (_, state) => crearMapa(state),
+      body: Stack(
+        children: [
+          BlocBuilder<MiUbicacionBloc, MiUbicacionState>(
+            builder: (_, state) => crearMapa(state),
+          ),
+          Positioned(
+            top: 15,
+            child: SearchBar(),
+          ),
+          MarcadorManual()
+        ],
       ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -50,15 +61,19 @@ class _MapaPageState extends State<MapaPage> {
     final camaraPosition =
         new CameraPosition(target: state.ubicacion, zoom: 15);
 
-    return GoogleMap(
-      initialCameraPosition: camaraPosition,
-      myLocationEnabled: true,
-      myLocationButtonEnabled: false,
-      zoomControlsEnabled: false,
-      onMapCreated: mapaBloc.initMapa,
-      polylines: mapaBloc.state.polylines.values.toSet(),
-      onCameraMove: (cameraPosition) {
-        mapaBloc.add(OnMovioMapa(camaraPosition.target));
+    return BlocBuilder<MapaBloc, MapaState>(
+      builder: (context, _) {
+        return GoogleMap(
+          initialCameraPosition: camaraPosition,
+          myLocationEnabled: true,
+          myLocationButtonEnabled: false,
+          zoomControlsEnabled: false,
+          onMapCreated: mapaBloc.initMapa,
+          polylines: mapaBloc.state.polylines.values.toSet(),
+          onCameraMove: (cameraPosition) {
+            mapaBloc.add(OnMovioMapa(cameraPosition.target));
+          },
+        );
       },
     );
   }
