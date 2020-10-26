@@ -25,9 +25,12 @@ class SearchBar extends StatelessWidget {
         width: width,
         child: GestureDetector(
           onTap: () async {
-            print('Ir al delegate');
+            final proximidad = context.bloc<MiUbicacionBloc>().state.ubicacion;
+            final history = context.bloc<BusquedaBloc>().state.history;
             final resultado = await showSearch(
-                context: context, delegate: SearchDestination());
+              context: context,
+              delegate: SearchDestination(proximidad, history),
+            );
             this.retornoBusqueda(context, resultado);
           },
           child: Container(
@@ -54,14 +57,38 @@ class SearchBar extends StatelessWidget {
     );
   }
 
-  void retornoBusqueda(BuildContext context, SearchResult result) {
-    print('cancelo====${result.cancelo}');
-    print('manual====${result.manual}');
+  Future retornoBusqueda(BuildContext context, SearchResult result) async {
     if (result.cancelo) return;
 
     if (result.manual) {
       context.bloc<BusquedaBloc>().add(OnAtivarMarcadorManual());
       return;
     }
+    calculandoAlerta(context);
+    //Calcular ruta valor recibido
+    final trafficService = TraffitService();
+    final mapaBloc = context.bloc<MapaBloc>();
+
+    final inicio = context.bloc<MiUbicacionBloc>().state.ubicacion;
+    final destino = result.position;
+
+    final drivingTraffit =
+        await trafficService.getCoordsInicioFin(inicio, destino);
+
+    final geometry = drivingTraffit.routes[0].geometry;
+    final duration = drivingTraffit.routes[0].duration;
+    final distance = drivingTraffit.routes[0].distance;
+
+    final points = Poly.Polyline.Decode(encodedString: geometry, precision: 6);
+    final List<LatLng> rutaCoordenadas = points.decodedCoords
+        .map(
+          (point) => LatLng(point[0], point[1]),
+        )
+        .toList();
+    mapaBloc.add(OnCrearRutaInicioDestino(rutaCoordenadas, distance, duration));
+    Navigator.of(context).pop();
+    // add  history
+    final busquedaBloc = context.bloc<BusquedaBloc>();
+    busquedaBloc.add(OnAddHistory(result));
   }
 }
